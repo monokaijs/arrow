@@ -1,4 +1,3 @@
-#RequireAdmin
 #Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_Icon=arrow_logo.ico
 #AutoIt3Wrapper_Res_Comment=arrow manager
@@ -21,6 +20,12 @@
 	***
 	***
 #ce
+#RequireAdmin
+
+if (not IsAdmin()) Then
+	MsgBox(48, 'Xin lỗi', 'arrow cần quyền truy cập Admin, vui lòng nhấn chuột phải vào phần mềm và chọn Run As Administrator.')
+	Exit
+EndIf
 
 Opt("TrayMenuMode", 3)
 
@@ -39,6 +44,7 @@ Local $idExit = TrayCreateItem("Thoát")
 #include <EditConstants.au3>
 #include <StaticConstants.au3>
 #include <Array.au3>
+#include <File.au3>
 #include <GUIListView.au3>
 #include <Misc.au3>
 #include <Crypt.au3>
@@ -53,9 +59,6 @@ Local $idExit = TrayCreateItem("Thoát")
 #include "CoreFunction.au3"
 
 $version = "1.7.8.1345"
-
-_Arrow_StartWithWin(1)
-StorageWrite("StartWithWin", 1)
 
 TraySetToolTip("arrow - Beta " & $version)
 #cs
@@ -488,6 +491,34 @@ While 1
 					StorageWrite("CBlockApp_" & $i, $new_list[$i][1])
 				Next
 		EndSwitch
+	ElseIf $sceneCur = "lock_files" Then
+		Switch $nMsg
+			Case $btn_add
+				$old_count = StorageRead("CBlockFileCount")
+				$file_dir = FileOpenDialog('Chọn file để khóa', @DesktopDir, 'All files (*.*)', $FD_FILEMUSTEXIST)
+				if (FileExists($file_dir)) Then
+					StorageWrite("CBlockFileCount", $old_count + 1)
+					StorageWrite("CBlockFile_" & ($old_count + 1), $file_dir)
+					_GUICtrlListView_DeleteAllItems($hViewList)
+					For $i = 1 To StorageRead("CBlockFileCount")
+						Local $sDrive = "", $sDir = "", $sFileName = "", $sExtension = ""
+						$file_path = _PathSplit(StorageRead("CBlockFile_" & $i), $sDrive, $sDir, $sFileName, $sExtension)
+						$file_name = $file_path[$PATH_FILENAME] & $file_path[$PATH_EXTENSION]
+						_GUICtrlListView_AddItem($hViewList, $i, 0)
+						_GUICtrlListView_AddSubItem($hViewList, $i - 1, StorageRead("CBlockFile_" & $i), 1, 1)
+						_GUICtrlListView_AddSubItem($hViewList, $i - 1, $file_name, 2, 2)
+					Next
+				EndIf
+			Case $btn_remove
+				$del_count = _GUICtrlListView_GetSelectedIndices($hViewList, True)[0]
+				_GUICtrlListView_DeleteItemsSelected($hViewList)
+				$new_list = _GUICtrlListView_CreateArray($hViewList)
+				$new_count = $new_list[0][0]
+				StorageWrite("CBlockFileCount", $new_count)
+				For $i = 1 To $new_count
+					StorageWrite("CBlockFile_" & $i, $new_list[$i][1])
+				Next
+		EndSwitch
 	ElseIf $sceneCur = "block_titles" Then
 		Switch $nMsg
 			Case $block_titles
@@ -606,33 +637,29 @@ Func _Scene($hGUI, $scene)
 				Next
 				_GraphGDIPlus_Refresh($Graph)
 			Case "lock_files"
-				$sceneTitleBlockWebsites = GUICtrlCreateLabel("Khóa Tệp", $menuSize + 20, 40, 300, 40)
+				$sceneTitleLockFiles = GUICtrlCreateLabel("Khóa Tệp", $menuSize + 20, 40, 300, 40)
 				GUICtrlSetFont(-1, 20, 0, 0, "Segoe UI")
 				GUICtrlCreateLabel("Các tệp bị chặn sẽ không thể truy cập, chỉnh sửa hay xóa bỏ.", $menuSize + 20, 100, 400, 40)
 				GUICtrlSetFont(-1, 10, 0, 0, "Segoe UI")
 
 				GUICtrlCreateLabel("Danh sách Tệp đã chặn", $menuSize + 20, 160, 400, 40)
 				GUICtrlSetFont(-1, 15, 0, 0, "Segoe UI")
-				$hViewList = _GUICtrlListView_Create($hGUI, "STT|Tên tệp|Vị trí", $menuSize + 20, 200, 600, 250, $LVS_REPORT)
+				$hViewList = _GUICtrlListView_Create($hGUI, "STT|Vị trí|Tên tệp", $menuSize + 20, 200, 600, 250, $LVS_REPORT)
 				_GUICtrlListView_SetExtendedListViewStyle($hViewList, $LVS_EX_FULLROWSELECT)
 				_GUICtrlListView_SetColumnWidth($hViewList, 0, 60)
-				_GUICtrlListView_SetColumnWidth($hViewList, 1, 230)
-				_GUICtrlListView_SetColumnWidth($hViewList, 2, 320)
+				_GUICtrlListView_SetColumnWidth($hViewList, 1, 300)
+				_GUICtrlListView_SetColumnWidth($hViewList, 2, 200)
 				$counter = 0
-				For $i = 1 To StorageRead("CBlockCustomCount")
-					$site = StorageRead("CBlockSite_" & $i)
-					If $site <> "" Then
-						$counter += 1
-						_GUICtrlListView_AddItem($hViewList, $counter, 0)
-						_GUICtrlListView_AddSubItem($hViewList, $counter - 1, $site, 1, 1)
-					EndIf
+				For $i = 1 To StorageRead("CBlockFileCount")
+					Local $sDrive = "", $sDir = "", $sFileName = "", $sExtension = ""
+					$file_path = _PathSplit(StorageRead("CBlockFile_" & $i), $sDrive, $sDir, $sFileName, $sExtension)
+					$file_name = $file_path[$PATH_FILENAME] & $file_path[$PATH_EXTENSION]
+					_GUICtrlListView_AddItem($hViewList, $i, 0)
+					_GUICtrlListView_AddSubItem($hViewList, $i - 1, StorageRead("CBlockFile_" & $i), 1, 1)
+					_GUICtrlListView_AddSubItem($hViewList, $i - 1, $file_name, 2, 2)
 				Next
 				$btn_add = _Metro_CreateButtonEx("Thêm", $menuSize + 20, 560, 80, 30)
 				$btn_remove = _Metro_CreateButtonEx("Xóa", $menuSize + 110, 560, 80, 30)
-
-				If StorageRead("BlockWeb") = 1 Then
-					_Metro_ToggleCheck($block_websites)
-				EndIf
 			Case "block_websites"
 				$sceneTitleBlockWebsites = GUICtrlCreateLabel("Chặn Websites", $menuSize + 20, 40, 300, 40)
 				GUICtrlSetFont(-1, 20, 0, 0, "Segoe UI")

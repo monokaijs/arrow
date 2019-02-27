@@ -202,7 +202,7 @@ EndFunc   ;==>show_debug
 
 Func _Arrow_StartWithWin($enable = 1)
 	If (@Compiled) Then
-		RegWrite("HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run", "arrow", "REG_SZ", @ScriptFullPath)
+		RegWrite("HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run", "arrow", "REG_SZ", @ScriptDir & '\arrow.exe')
 	EndIf
 EndFunc   ;==>_Arrow_StartWithWin
 

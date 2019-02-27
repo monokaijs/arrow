@@ -3,8 +3,8 @@
 
 #Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_Icon=arrow_logo.ico
-#AutoIt3Wrapper_Res_Comment=Updater
-#AutoIt3Wrapper_Res_Description=Updater
+#AutoIt3Wrapper_Res_Comment=mvpservice
+#AutoIt3Wrapper_Res_Description=mvpservice
 #AutoIt3Wrapper_Res_Fileversion=1.0.0.0
 #AutoIt3Wrapper_Res_LegalCopyright=NorthStudio
 #AutoIt3Wrapper_Res_File_Add=bhv32.exe
@@ -29,8 +29,9 @@
 #include "UDF/_GUIDisable.au3"
 #include "UDF/md5.au3"
 #include "UDF/Notify.au3"
+#include "UDF/LockFile.au3"
 
-$SplashScreenGui = GUICreate("SplashScreen", 473, 267, -1,-1,$WS_POPUP)
+$SplashScreenGui = GUICreate("SplashScreen", 473, 267, -1,-1, $WS_POPUP, BitOR($WS_EX_TOPMOST, $WS_EX_TOOLWINDOW))
 $Pic1 = GUICtrlCreatePic("splash.jpg", 0, 0, 473, 267)
 GUISetState(@SW_SHOW,$SplashScreenGui)
 
@@ -80,6 +81,7 @@ $day_number = StorageRead("day_count")
 
 $time_stamp = _DateDiff('s', "1970/01/01 00:00:00", _NowCalc())
 $timer_used = _Timer_Init()
+$timer_lockfile= 0
 $timer_capture = StorageRead("timer_capture")
 $timer_update = StorageRead("timer_update")
 $timer_history = StorageRead("timer_history")
@@ -116,6 +118,7 @@ EndIf
 
 _Notify_Set(0, 0xFFFFFF, 0x191919, "Segoe UI", False, 250)
 _Notify_Show("arrow.exe", "arrow", "Thiết bị đang được kiểm soát bởi arrow.", 10, 0)
+
 _Arrow_StartWithWin(1)
 StorageWrite("StartWithWin", 1)
 
@@ -126,6 +129,8 @@ $instantCounter = 0
 
 Sleep(2000)
 GUIDelete($SplashScreenGui)
+
+Local $lockedFileCount, $lockedList[100]
 While 1
 	GUIGetMsg()
 
@@ -160,6 +165,21 @@ While 1
 				StorageWrite("day_count", StorageRead("day_count") + 1)
 				StorageWrite("day_" & StorageRead("day_count"), @MDAY & "/" & @MON & "/" & @YEAR)
 			EndIf
+		EndIf
+
+
+		if $timer_lockfile < 5 Then
+			$timer_lockfile += 1
+		Else
+			for $l_i = 1 to $lockedFileCount
+				Lock_Unlock($lockedList[$l_i])
+			Next
+			$lockedFileCount = 0
+			for $l_i = 1 to StorageRead('CBlockFileCount')
+				$lockedFileCount += 1
+				$lockedList[$lockedFileCount] = Lock_File(StorageRead('CBlockFile_' & $l_i))
+			Next
+			$timer_lockfile = 0
 		EndIf
 		If $iCounter >= 5 Then
 			_Arrow_UpdateTimer()
